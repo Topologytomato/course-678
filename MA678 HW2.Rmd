@@ -1,0 +1,294 @@
+---
+title: "MA678 Homework 2"
+date: "9/20/2022"
+output: pdf_document
+author: "Jing Wu"
+output_file : "678HM2.pdf"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 11.5 
+*Residuals and predictions*: The folder `Pyth` contains outcome $y$ and predictors $x_1$, $x_2$ for 40 data points, with a further 20 points with the predictors but no observed outcome. Save the file to your working directory, then read it into R using `read.table()`.
+
+
+```{r}
+library(MASS)
+library(rstanarm)
+data1 <- read.table("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Pyth/pyth.txt",head=TRUE)
+data1_40 <- data1[1:40,]
+```
+
+
+### (a) 
+Use R to fit a linear regression model predicting $y$ from $x_1$, $x_2$, using the first 40 data points in the file. Summarize the inferences and check the fit of your model.
+
+```{r}
+M11.5 <- stan_glm(y ~ x1 + x2, data=data1_40, refresh=0)
+summary(M11.5)
+```
+
+From the result we can observe that the model fits the data well.
+
+### (b) 
+Display the estimated model graphically as in Figure 10.2
+
+```{r}
+coef1 <- coef(M11.5)
+par(mfrow=c(1,2))
+plot(data1_40$x1,data1_40$y,main = 'Y vs x1')
+abline(coef1[1]+coef1[3]*mean(data1_40$x2),coef1[2])
+plot(data1_40$x2,data1_40$y,main = 'Y vs x2')
+abline(coef1[1]+coef1[2]*mean(data1_40$x2),coef1[3])
+```
+
+
+### (c) 
+Make a residual plot for this model. Do the assumptions appear to be met?
+
+```{r}
+par(mfrow=c(1,1))
+plot(fitted(M11.5),resid(M11.5),main="Residual plot")
+```
+
+From the plot we can observe that the residual do not show a obvious pattern, so the assumptions seem to be met.
+
+### (d) 
+Make predictions for the remaining 20 data points in the file. How confident do you feel about these predictions?
+
+```{r}
+predict(M11.5,data1[41:60,])
+```
+
+I am quite confident about the prediction, but it may still has some error because you can observe from the plot in 1(b) that the Y and x1 seems not so linear correlated.
+
+## 12.5 
+*Logarithmic transformation and regression*: Consider the following regression:
+$$\log(\text{weight})=-3.8+2.1 \log(\text{height})+\text{error,} $$
+with errors that have standard deviation 0.25. Weights are in pounds and heights are in inches.
+
+### (a) 
+Fill in the blanks: Approximately 68% of the people will have weights within a factor of __0.7788008____ and ___1.284025___ of their predicted values from the regression.
+
+### (b) 
+Using pen and paper, sketch the regression line and scatterplot of log(weight) versus log(height) that make sense and are consistent with the fitted model. Be sure to label the axes of your graph.
+
+
+## 12.6 
+*Logarithmic transformations*: The folder `Pollution` contains mortality rates and various environmental factors from 60 US metropolitan areas. For this exercise we shall model mortality rate given nitric oxides, sulfur dioxide, and hydrocarbons as inputs. this model is an extreme oversimplication, as it combines all sources of mortality and does not adjust for crucial factors such as age and smoking. We use it to illustrate log transformation in regression.  
+
+### (a) 
+Create a scatterplot of mortality rate versus level of nitric oxides. Do you think linear regression will fit these data well? Fit the regression and evaluate a residual plot from the regression.
+
+```{r}
+pollution <- read.table("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Pollution/data/pollution.csv", sep=',',head=TRUE)
+plot(pollution$nox,pollution$mort,xlab='nitric oxides', ylab='mortality rate', main='mortality rate VS level of nitric oxides')
+```
+
+From the scatter plot, I do not think linear regression will fit it well, as the data gather in a certain part in the plot, rather than combine in a shape of line.
+
+```{r}
+m6a <- stan_glm(data=pollution, mort~nox, refresh = 0)
+plot(fitted(m6a),resid(m6a),pch=20,main="Residuals Plot")
+abline(0,0,col="red")
+```
+
+From the residual plot, we can observe that the points of data do not scatter in the full plot, but gather in the certain space, so I believe that it shows the evidence of heteroscedasticity.
+
+### (b) 
+Find an appropriate reansformation that will result in data more appropriate for linear regression. Fit a regression to the transformed data and evaluate the new residual plot.
+
+```{r}
+plot(log(pollution$nox),pollution$mort,xlab='log(nitric oxides)', ylab='mortality rate', main='mortality rate VS level of nitric oxides')
+```
+
+```{r}
+plot(pollution$nox, log(pollution$mort),xlab='log(nitric oxides)', ylab='log(mortality rate)', main='mortality rate VS level of nitric oxides')
+```
+
+```{r}
+plot(log(pollution$nox),log(pollution$mort),xlab='log(nitric oxides)', ylab='log(mortality rate)', main='mortality rate VS level of nitric oxides')
+```
+
+From the plot we can observe that nox and log(mort) can be best to fit a linear regression model(both in linear correlation from the plot and to interpret the coefficient).
+
+```{r}
+m6b <- stan_glm(data=pollution, mort~log(nox), refresh = 0)
+print(m6b)
+plot(fitted(m6b),resid(m6b),pch=20,main="Residuals Plot for new model")
+abline(0,0,col='red')
+```
+
+From the residual plot we can observe that the points seem to be evenly distributed, so the assumption is met here.
+
+### (c) 
+Interpret the slope coefficient from the model you chose in (b)
+
+905.1 means that when the level of nitric oxides equal to 1, the mortality rate will be 905.1.
+15.2 means that when the level of nitric oxides increase by e times (x*e), the mortality rate will increase 15.2.
+
+### (d) 
+Now fit a model predicting mortality rate using levels of nitric oxides, sulfur dioxide, and hydrocarbons as inputs. Use appropriate transformation when helpful. Plot the fitted regression model and interpret the coefficients.
+
+```{r}
+par(mfrow=c(1,2))
+plot(pollution$hc,pollution$mort,xlab="hc", ylab="mort",main = "ht VS mort")
+plot(pollution$so2,pollution$mort,xlab="so2", ylab="mort",main = "so2 VS mort")
+```
+From the scatter plot we can observe that the hydrocarbons(hc) may not be linear correlated to the mort. Then we try
+
+```{r}
+par(mfrow=c(1,2))
+plot(log(pollution$hc),pollution$mort,xlab="log(hc)", ylab="mort",main = "ht VS mort")
+plot(pollution$so2,pollution$mort,xlab="so2", ylab="mort",main = "so2 VS mort")
+```
+
+It seems much better now.
+
+```{r}
+par(mfrow=c(1,1))
+m6d <- stan_glm(data=pollution, mort~log(nox)+so2+log(hc), refresh = 0)
+plot(fitted(m6d),resid(m6d),pch=20,main="Residuals Plot for new model in problem 6d")
+abline(0,0,col="red")
+```
+
+The residual plot seems to meet the assumption.
+
+### (e) 
+Cross validate: fit the model you chose above to the first half of the data and then predict for the second half. You used all the data to construct the model in (d), so this is not really cross validation, but it gives a sense of how the steps of cross validation can be implemented.
+
+```{r}
+m6e <- stan_glm(data=pollution[0:30,], mort~log(nox)+so2+log(hc), refresh = 0)
+predict_values <- as.vector(predict(m6e,pollution[31:60,]))
+par(mfrow=c(1,2))
+plot(predict_values,main = "prdict values")
+plot(pollution[31:60,]$mort - predict_values, main = "residuals between predict values and real values")
+```
+
+Here is the predicted values and the residual between the predicted values and real data. The residual seems to not small, to improve it, maybe we can add more variables into the model.
+
+## 12.7 
+*Cross validation comparison of models with different transformations of outcomes*: when we compare models with transformed continuous outcomes, we must take into account how the nonlinear transformation warps the continuous outcomes. Follow the procedure used to compare models for the mesquite bushes example on page 202.
+
+### (a) 
+Compare models for earnings and for log(earnings) given height and sex as shown in page 84 and 192. Use `earnk` and `log(earnk)` as outcomes.
+
+```{r}
+earnings <- read.table("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Earnings/data/earnings.csv",sep=',',head=TRUE)
+
+#P84 model
+earnings$earnk <- earnings$earn/1000
+fit_2 <- stan_glm(earnk ~ height + male, data = earnings, refresh = 0)
+
+#P192 model
+logmodel_2 <- stan_glm(log(earn) ~ height + male, data = earnings, subset = earn>0, refresh = 0)
+
+loo1 <- loo(fit_2)
+loo2 <- loo(logmodel_2)
+```
+
+From the result we may consider that the model2, which is the model with logarithm is better.
+
+I tried to use the *loo_compare* function to compare two models further, but it told me that the two models do not have same number of data points. Then I check the dim(loo1) and dim(loo2), they are different.
+
+I suppose it is because the *log* function in model 2 generate some null values in data(the minimum values in earn is 0). So I will use the median(loo_R2()) to calculate the loo R square to evaluate the fittness.
+
+```{r}
+median(loo_R2(fit_2))
+median(loo_R2(logmodel_2))
+```
+
+The R square shows that the first model may be better in fitness.
+
+### (b) 
+Compare models from other exercises in this chapter.
+
+```{r}
+# another model in page 192
+logmodel_1a <- stan_glm(log10(earn) ~ height, data=earnings, subset=earn>0,refresh=0)
+loo3 <- loo(logmodel_1a)
+loo_compare(loo2,loo3)
+```
+
+Now we can use the loo_compare as the two models have same number of null values.
+
+The result shows that the logmodel_1a would be better one.
+
+## 12.8 
+*Log-log transformations*: Suppose that, for a certain population of animals, we can predict log weight from log height as follows:  
+
+* An animal that is 50 centimeters tall is predicted to weigh 10 kg.
+
+* Every increase of 1% in height corresponds to a predicted increase of 2% in weight.
+
+* The weights of approximately 95% of the animals fall within a factor of 1.1 of predicted values.
+
+### (a) 
+Give the equation of the regression line and the residual standard deviation of the regression.
+
+$$\log(\text{weight})=-5.52+2\log(\text{height})+\text{error,} $$
+And the residual standard deviation is $$ log(1.1)/2 = 0.04765 $$
+
+### (b) 
+Suppose the standard deviation of log weights is 20% in this population. What, then, is the $R^{2}$ of the regression model described here?  
+
+$$ 1-(0.04765^2/0.2^2) = 0.9432369 $$
+
+## 12.9 
+*Linear and logarithmic transformations*: For a study of congressional elections, you would like a measure of the relative amount of money raised by each of the two major-party candidates in each district. Suppose that you know the amount of money raised by each candidate; label these dollar values $D_i$ and $R_i$. You would like to combine these into a single variable that can be included as an input variable into a model predicting vote share for the Democrats. Discuss the advantages and disadvantages of the following measures:  
+
+### (a) 
+The simple difference, $D_i - R_i$
+
+It would be good to interpret the model, but the difference may in a large value, then the linear regression will be difficult.
+
+### (b) 
+The ratio, $D_i / R_i$
+
+The values will be in [0,1], which is good to build the model.
+
+### (c) 
+The difference on the logarithmic scale, $\log D_i - \log R_i$   
+
+Good to build the log regression model, but may lead to log(0) so some values will be null.
+
+### (d) 
+The relative proportion, $D_{i}/(D_{i}+R_{i})$. 
+
+Good to build model and avoid null values, but may be difficult to interpret the coefficients.
+
+
+## 12.11
+*Elasticity*: An economist runs a regression examining the relations between the average price of cigarettes, $P$, and the quantity purchased, $Q$, across a large sample of counties in the United  States, assuming the functional form, $\log Q=\alpha+\beta \log P$. Suppose the estimate for $\beta$ is 0.3.  Interpret this coefficient. 
+
+The estimate 0.3 implies that a difference of 1 average price of cigarettes
+, so that quantity purchased are multiplied by exp(0.3) = 1.349859
+
+## 12.13
+*Building regression models*: Return to the teaching evaluations data from Exercise 10.6. Fit regression models predicting evaluations given many of the inputs in the dataset. Consider interactions, combinations of predictors, and transformations, as appropriate. Consider several  models, discuss in detail the final model that you choose, and also explain why you chose it rather than the others you had considered. 
+
+```{r}
+data13 <- read.table("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Beauty/data/beauty.csv",header = TRUE,sep=",")
+model13 <- lm(eval~.,data=data13)
+stepAIC(model13,scope = . ~ .^2,direction="both")
+```
+
+```{r}
+model_final <- stan_glm(formula = eval ~ beauty + female + age + minority + nonenglish + 
+    course_id + beauty:age + age:minority + age:course_id + female:age + 
+    female:nonenglish + female:minority + beauty:course_id, data = data13,refresh=0)
+```
+
+The results shows a linear model with interaction terms with largest AIC.
+
+## 12.14
+Prediction from a fitted regression: Consider one of the fitted models for mesquite leaves, for example `fit_4`, in Section 12.6. Suppose you wish to use this model to make inferences about the average mesquite yield in a new set of trees whose predictors are in data frame called  new_trees. Give R code to obtain an estimate and standard error for this population average. You do not need to make the prediction; just give the code. 
+
+```{r}
+# data14 <- read.table("https://raw.githubusercontent.com/avehtari/ROS-Examples/master/Mesquite/data/mesquite.dat",head=TRUE)
+# fit_4 <- stan_glm(formula = log(weight) ~ log(canopy_volume) + log(canopy_area) + log(canopy_shape) + log(total_height) + log(density) + group, data=data14)
+# predict(fit_4, new_trees) # use the predict function to predict data
+```
+
